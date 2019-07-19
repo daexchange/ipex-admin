@@ -194,6 +194,7 @@ public class CoinController extends BaseAdminController {
 	static {
 		coinPort.put("PWR", "7013");
 		coinPort.put("ETH", "7003");
+		coinPort.put("TLM", "7009");
 	}
 
 	@RequiresPermissions("system:coin:page-query")

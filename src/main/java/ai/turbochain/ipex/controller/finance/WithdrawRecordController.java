@@ -4,6 +4,7 @@ import static ai.turbochain.ipex.constant.BooleanEnum.IS_FALSE;
 import static ai.turbochain.ipex.constant.WithdrawStatus.FAIL;
 import static ai.turbochain.ipex.constant.WithdrawStatus.SUCCESS;
 import static ai.turbochain.ipex.constant.WithdrawStatus.WAITING;
+import static ai.turbochain.ipex.util.BigDecimalUtils.sub;
 import static org.springframework.util.Assert.isTrue;
 import static org.springframework.util.Assert.notNull;
 
@@ -15,6 +16,7 @@ import org.apache.shiro.authz.annotation.RequiresPermissions;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
@@ -26,6 +28,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.SessionAttribute;
 
+import com.alibaba.fastjson.JSONObject;
 import com.querydsl.core.types.Predicate;
 import com.sparkframework.security.Encrypt;
 
@@ -38,6 +41,7 @@ import ai.turbochain.ipex.constant.TransactionType;
 import ai.turbochain.ipex.constant.WithdrawStatus;
 import ai.turbochain.ipex.controller.common.BaseAdminController;
 import ai.turbochain.ipex.entity.Admin;
+import ai.turbochain.ipex.entity.Coin;
 import ai.turbochain.ipex.entity.Member;
 import ai.turbochain.ipex.entity.MemberTransaction;
 import ai.turbochain.ipex.entity.MemberWallet;
@@ -80,6 +84,9 @@ public class WithdrawRecordController extends BaseAdminController {
 
     @Autowired
     private MemberService memberService;
+    
+    @Autowired
+    private KafkaTemplate<String, String> kafkaTemplate;
 
 
     @Value("${spark.system.md5.key}")
@@ -169,9 +176,9 @@ public class WithdrawRecordController extends BaseAdminController {
         withdrawRecordService.audit(ids, FAIL);
         return success(messageSource.getMessage("AUDIT_DOES_NOT_PASS"));
     }
-
+    
     /**
-     * 单个打款 转账成功添加流水号
+             * 单个打款 转账成功添加流水号
      *
      * @param id
      * @param transactionNumber
@@ -188,13 +195,50 @@ public class WithdrawRecordController extends BaseAdminController {
         Assert.notNull(record, "该记录不存在");
         Assert.isTrue(record.getIsAuto() == BooleanEnum.IS_FALSE, "该提现单为自动审核");
         record.setTransactionNumber(transactionNumber);
+        MemberWallet memberWallet = memberWalletService.findByCoinAndMemberId(record.getCoin(), record.getMemberId());
+        Assert.notNull(memberWallet, "member id " + record.getMemberId() + " 的 wallet 为 null");
+       
+        record.setStatus(WithdrawStatus.WAITING);
+        WithdrawRecord withdrawRecord = withdrawRecordService.save(record);
+        JSONObject json = new JSONObject();
+        json.put("uid", record.getMemberId());
+        //提币总数量
+        json.put("totalAmount", record.getTotalAmount());
+        //手续费
+        json.put("fee", record.getFee());
+        //预计到账数量
+        json.put("arriveAmount", record.getArrivedAmount());
+        //币种
+        json.put("coin", record.getCoin());
+        //提币地址
+        json.put("address", record.getAddress());
+        //提币记录id
+        json.put("withdrawId", withdrawRecord.getId());
+        kafkaTemplate.send("withdraw", record.getCoin().getUnit(), json.toJSONString());
+        return MessageResult.success(messageSource.getMessage("APPLY_SUCCESS"));
+    }
+
+    /**
+     * 单个打款 转账成功添加流水号  备份
+     *
+     * @param id
+     * @param transactionNumber
+     * @return
+     */
+    public MessageResult addNumberBack(
+            @RequestParam("id") Long id,
+            @RequestParam("transactionNumber") String transactionNumber) {
+        WithdrawRecord record = withdrawRecordService.findOne(id);
+        Assert.notNull(record, "该记录不存在");
+        Assert.isTrue(record.getIsAuto() == BooleanEnum.IS_FALSE, "该提现单为自动审核");
+        record.setTransactionNumber(transactionNumber);
         record.setStatus(WithdrawStatus.SUCCESS);
         MemberWallet memberWallet = memberWalletService.findByCoinAndMemberId(record.getCoin(), record.getMemberId());
         Assert.notNull(memberWallet, "member id " + record.getMemberId() + " 的 wallet 为 null");
         memberWallet.setFrozenBalance(memberWallet.getFrozenBalance().subtract(record.getTotalAmount()));
         memberWalletService.save(memberWallet);
         record = withdrawRecordService.save(record);
-
+        
         MemberTransaction memberTransaction = new MemberTransaction();
         memberTransaction.setMemberId(record.getMemberId());
         memberTransaction.setAddress(record.getAddress());
