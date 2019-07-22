@@ -38,14 +38,14 @@ import ai.turbochain.ipex.entity.BusinessAuthApply;
 import ai.turbochain.ipex.entity.BusinessCancelApply;
 import ai.turbochain.ipex.entity.DepositRecord;
 import ai.turbochain.ipex.entity.Member;
-import ai.turbochain.ipex.entity.MemberWallet;
+import ai.turbochain.ipex.entity.MemberLegalCurrencyWallet;
 import ai.turbochain.ipex.entity.QBusinessCancelApply;
 import ai.turbochain.ipex.service.BusinessAuthApplyService;
 import ai.turbochain.ipex.service.BusinessCancelApplyService;
 import ai.turbochain.ipex.service.DepositRecordService;
 import ai.turbochain.ipex.service.LocaleMessageSourceService;
+import ai.turbochain.ipex.service.MemberLegalCurrencyWalletService;
 import ai.turbochain.ipex.service.MemberService;
-import ai.turbochain.ipex.service.MemberWalletService;
 import ai.turbochain.ipex.util.DateUtil;
 import ai.turbochain.ipex.util.MessageResult;
 import ai.turbochain.ipex.util.PredicateUtils;
@@ -61,7 +61,7 @@ public class BusinessCancelApplyController extends BaseController {
     @Autowired
     private BusinessAuthApplyService businessAuthApplyService;
     @Autowired
-    private MemberWalletService memberWalletService;
+    private MemberLegalCurrencyWalletService memberLegalCurrencyWalletService;
     @Autowired
     private MemberService memberService;
     @Autowired
@@ -159,10 +159,10 @@ public class BusinessCancelApplyController extends BaseController {
                  * 退回保证金
                  */
                 if (businessAuthApplyList != null && businessAuthApplyList.size() > 0) {
-                    MemberWallet memberWallet = memberWalletService.findByCoinUnitAndMemberId(businessAuthApply.getBusinessAuthDeposit().getCoin().getUnit(), member.getId());
-                    memberWallet.setBalance(memberWallet.getBalance().add(deposit));
+                	MemberLegalCurrencyWallet memberLegalCurrencyWallet = memberLegalCurrencyWalletService.findByCoinUnitAndMemberId(businessAuthApply.getBusinessAuthDeposit().getCoin().getUnit(), member.getId());
+                	memberLegalCurrencyWallet.setBalance(memberLegalCurrencyWallet.getBalance().add(deposit));
                     // memberWallet.setFrozenBalance(memberWallet.getFrozenBalance().subtract(deposit));
-                    memberWalletService.save(memberWallet);
+                    memberLegalCurrencyWalletService.save(memberLegalCurrencyWallet);
                 }
             }
             /**
