@@ -403,7 +403,7 @@ public class CoinController extends BaseAdminController {
 		if (coin == null) {
 			return MessageResult.error("币种配置不存在");
 		}
-		jdbcUtils.synchronization2MemberRegisterWallet(null, coin.getUnit());
+		jdbcUtils.synchronization2MemberRegisterWallet(null, coin.getName());
 //        List<Member> list = memberService.findAll();
 //        list.forEach(member -> {
 //            MemberWallet wallet = memberWalletService.findByCoinAndMember(coin, member);
