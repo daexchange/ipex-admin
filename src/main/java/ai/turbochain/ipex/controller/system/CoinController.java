@@ -195,6 +195,7 @@ public class CoinController extends BaseAdminController {
 		coinPort.put("PWR", "7013");
 		coinPort.put("ETH", "7003");
 		coinPort.put("TLM", "7009");
+		coinPort.put("IPEX", "7010");
 		coinPort.put("BTC", "7001");
 		coinPort.put("USDT", "7002");
 	}
