@@ -198,6 +198,7 @@ public class CoinController extends BaseAdminController {
 		coinPort.put("IPEX", "7010");
 		coinPort.put("BTC", "7001");
 		coinPort.put("USDT", "7002");
+		coinPort.put("EOS", "7015");
 	}
 
 	@RequiresPermissions("system:coin:page-query")
