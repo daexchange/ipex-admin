@@ -159,7 +159,7 @@ public class BusinessCancelApplyController extends BaseController {
                  * 退回保证金
                  */
                 if (businessAuthApplyList != null && businessAuthApplyList.size() > 0) {
-                	MemberLegalCurrencyWallet memberLegalCurrencyWallet = memberLegalCurrencyWalletService.findByCoinUnitAndMemberId(businessAuthApply.getBusinessAuthDeposit().getCoin().getUnit(), member.getId());
+                	MemberLegalCurrencyWallet memberLegalCurrencyWallet = memberLegalCurrencyWalletService.findByOtcCoinUnitAndMemberId(businessAuthApply.getBusinessAuthDeposit().getCoin().getUnit(), member.getId());
                 	memberLegalCurrencyWallet.setBalance(memberLegalCurrencyWallet.getBalance().add(deposit));
                     // memberWallet.setFrozenBalance(memberWallet.getFrozenBalance().subtract(deposit));
                     memberLegalCurrencyWalletService.save(memberLegalCurrencyWallet);
