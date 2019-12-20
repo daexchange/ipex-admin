@@ -5,7 +5,7 @@ import ai.turbochain.ipex.entity.Member;
 import ai.turbochain.ipex.service.MemberBonusService;
 import ai.turbochain.ipex.service.MemberService;
 import ai.turbochain.ipex.util.MessageResult;
-
+import ai.turbochain.ipex.constant.MemberRegisterOriginEnum;
 import ai.turbochain.ipex.controller.common.BaseAdminController;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
@@ -52,7 +52,7 @@ public class MemberBonusController extends BaseAdminController{
         }
         if (!StringUtils.isEmpty(phone)) {
             log.info("==根据phone查询所有分红记录===phone:" +phone);
-            Member member=memberService.findByPhone(phone);
+            Member member=memberService.findByPhoneAndOrigin(phone,MemberRegisterOriginEnum.IPEX.getSourceType());
             return findByMemberId(member.getId(),pageNo-1,pageSize);
         }
         if (memberId==null&&StringUtils.isEmpty(phone)) {

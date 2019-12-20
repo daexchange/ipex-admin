@@ -35,6 +35,7 @@ import com.sparkframework.security.Encrypt;
 import ai.turbochain.ipex.annotation.AccessLog;
 import ai.turbochain.ipex.constant.AdminModule;
 import ai.turbochain.ipex.constant.BooleanEnum;
+import ai.turbochain.ipex.constant.MemberRegisterOriginEnum;
 import ai.turbochain.ipex.constant.PageModel;
 import ai.turbochain.ipex.constant.SysConstant;
 import ai.turbochain.ipex.constant.TransactionType;
@@ -117,7 +118,7 @@ public class WithdrawRecordController extends BaseAdminController {
         }
 
         if ( !StringUtils.isEmpty(screen.getMobilePhone())){
-            Member member = memberService.findByPhone(screen.getMobilePhone());
+            Member member = memberService.findByPhoneAndOrigin(screen.getMobilePhone(),MemberRegisterOriginEnum.IPEX.getSourceType());
             predicates.add(QWithdrawRecord.withdrawRecord.memberId.eq(member.getId()));
         }
 
@@ -177,6 +178,14 @@ public class WithdrawRecordController extends BaseAdminController {
         return success(messageSource.getMessage("AUDIT_DOES_NOT_PASS"));
     }
     
+    @PatchMapping("/add-transaction-number2")
+    @Transactional(rollbackFor = Exception.class)
+    public MessageResult addNumber2() {
+    	
+    	System.out.println("=====1======");
+    	System.out.println("====2=======");
+		return null;
+	}
     /**
              * 单个打款 转账成功添加流水号
      *
@@ -215,7 +224,8 @@ public class WithdrawRecordController extends BaseAdminController {
         //提币记录id
         json.put("withdrawId", withdrawRecord.getId());
         kafkaTemplate.send("withdraw", record.getCoin().getUnit(), json.toJSONString());
-        return MessageResult.success(messageSource.getMessage("APPLY_SUCCESS"));
+        //return MessageResult.success(messageSource.getMessage("APPLY_SUCCESS"));
+        return MessageResult.success("申请成功！");
     }
 
     /**

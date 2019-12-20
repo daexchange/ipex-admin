@@ -1,20 +1,14 @@
 package ai.turbochain.ipex.controller.otc;
 
-import com.querydsl.core.types.dsl.BooleanExpression;
-import ai.turbochain.ipex.annotation.AccessLog;
-import ai.turbochain.ipex.constant.*;
-import ai.turbochain.ipex.entity.*;
-import ai.turbochain.ipex.es.ESUtils;
-import ai.turbochain.ipex.exception.InformationExpiredException;
-import ai.turbochain.ipex.service.*;
-import ai.turbochain.ipex.util.DateUtil;
-import ai.turbochain.ipex.util.MessageResult;
-import ai.turbochain.ipex.vo.AppealVO;
+import static ai.turbochain.ipex.util.BigDecimalUtils.add;
+import static org.springframework.util.Assert.isTrue;
+import static org.springframework.util.Assert.notNull;
 
-import ai.turbochain.ipex.controller.common.BaseAdminController;
-import ai.turbochain.ipex.event.OrderEvent;
-import ai.turbochain.ipex.model.screen.AppealScreen;
-import lombok.extern.slf4j.Slf4j;
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
 import org.apache.shiro.authz.annotation.RequiresPermissions;
 import org.hibernate.transform.Transformers;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,14 +21,40 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
+import com.querydsl.core.types.dsl.BooleanExpression;
 
-import static ai.turbochain.ipex.util.BigDecimalUtils.add;
-import static org.springframework.util.Assert.isTrue;
-import static org.springframework.util.Assert.notNull;
+import ai.turbochain.ipex.annotation.AccessLog;
+import ai.turbochain.ipex.constant.AdminModule;
+import ai.turbochain.ipex.constant.AdvertiseType;
+import ai.turbochain.ipex.constant.AppealStatus;
+import ai.turbochain.ipex.constant.BooleanEnum;
+import ai.turbochain.ipex.constant.CommonStatus;
+import ai.turbochain.ipex.constant.OrderStatus;
+import ai.turbochain.ipex.constant.PageModel;
+import ai.turbochain.ipex.constant.TransactionType;
+import ai.turbochain.ipex.controller.common.BaseAdminController;
+import ai.turbochain.ipex.entity.Advertise;
+import ai.turbochain.ipex.entity.Appeal;
+import ai.turbochain.ipex.entity.Member;
+import ai.turbochain.ipex.entity.MemberLegalCurrencyWallet;
+import ai.turbochain.ipex.entity.MemberTransaction;
+import ai.turbochain.ipex.entity.Order;
+import ai.turbochain.ipex.entity.QAppeal;
+import ai.turbochain.ipex.es.ESUtils;
+import ai.turbochain.ipex.event.OrderEvent;
+import ai.turbochain.ipex.exception.InformationExpiredException;
+import ai.turbochain.ipex.model.screen.AppealScreen;
+import ai.turbochain.ipex.service.AdvertiseService;
+import ai.turbochain.ipex.service.AppealService;
+import ai.turbochain.ipex.service.LocaleMessageSourceService;
+import ai.turbochain.ipex.service.MemberLegalCurrencyWalletService;
+import ai.turbochain.ipex.service.MemberService;
+import ai.turbochain.ipex.service.MemberTransactionService;
+import ai.turbochain.ipex.service.OrderService;
+import ai.turbochain.ipex.util.DateUtil;
+import ai.turbochain.ipex.util.MessageResult;
+import ai.turbochain.ipex.vo.AppealVO;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * @author GS
@@ -56,7 +76,7 @@ public class AdminAppealController extends BaseAdminController {
     private AdvertiseService advertiseService;
 
     @Autowired
-    private MemberWalletService memberWalletService;
+    private MemberLegalCurrencyWalletService memberLegalCurrencyWalletService;
 
     @Autowired
     private MemberService memberService;
@@ -174,6 +194,11 @@ public class AdminAppealController extends BaseAdminController {
         int ret = getRet(order, initiatorId, associateId);
         isTrue(ret != 0, msService.getMessage("REQUEST_ILLEGAL"));
         isTrue(order.getStatus().equals(OrderStatus.NONPAYMENT) || order.getStatus().equals(OrderStatus.PAID) || order.getStatus().equals(OrderStatus.APPEAL), msService.getMessage("ORDER_NOT_ALLOW_CANCEL"));
+        Advertise advertise = advertiseService.findOne(order.getAdvertiseId());
+        if (advertise==null) {
+        	return MessageResult.error("广告已被删除");
+        }
+        
         //取消订单
         if (!(orderService.cancelOrder(order.getOrderSn()) > 0)) {
             throw new InformationExpiredException("Information Expired");
@@ -221,14 +246,14 @@ public class AdminAppealController extends BaseAdminController {
 
 
     private MessageResult cancel(Order order , BigDecimal amount , Long memberId)  throws InformationExpiredException{
-        MemberWallet memberWallet  ;
+    	MemberLegalCurrencyWallet memberLegalCurrencyWallet  ;
         //更改广告
         if (!advertiseService.updateAdvertiseAmountForCancel(order.getAdvertiseId(), amount)) {
             throw new InformationExpiredException("Information Expired");
         }
-        memberWallet = memberWalletService.findByOtcCoinAndMemberId(order.getCoin(), memberId);
-        log.info("======memberWallet===="+memberWallet.toString());
-        MessageResult result = memberWalletService.thawBalance(memberWallet,amount);
+        memberLegalCurrencyWallet = memberLegalCurrencyWalletService.findByOtcCoinAndMemberId(order.getCoin(), memberId);
+        log.info("======memberWallet===="+memberLegalCurrencyWallet.toString());
+        MessageResult result = memberLegalCurrencyWalletService.thawBalance(memberLegalCurrencyWallet,amount);
         if (result.getCode() == 0) {
             return MessageResult.success("取消订单成功");
         } else {
@@ -267,6 +292,7 @@ public class AdminAppealController extends BaseAdminController {
     public MessageResult confirmRelease(long appealId, String orderSn, @RequestParam(value = "banned", defaultValue = "false") boolean banned) throws Exception {
         Appeal appeal = appealService.findOne(appealId);
         Assert.notNull(appeal, "申诉单不存在");
+        
         Long initiatorId = appeal.getInitiatorId();
         Long associateId = appeal.getAssociateId();
         // Assert.hasText(jyPassword, msService.getMessage("MISSING_JYPASSWORD"));
@@ -279,6 +305,10 @@ public class AdminAppealController extends BaseAdminController {
         int ret = getRet(order, initiatorId, associateId);
         isTrue(ret != 0, msService.getMessage("REQUEST_ILLEGAL"));
         isTrue(order.getStatus().equals(OrderStatus.PAID) || order.getStatus().equals(OrderStatus.APPEAL), msService.getMessage("ORDER_STATUS_EXPIRED"));
+        Advertise advertise = advertiseService.findOne(order.getAdvertiseId());
+        if (advertise==null) {
+        	return MessageResult.error("广告已被删除");
+        }
         if (ret == 1 || ret == 4) {
             //更改广告
             if (!advertiseService.updateAdvertiseAmountForRelease(order.getAdvertiseId(), order.getNumber())) {
@@ -297,7 +327,7 @@ public class AdminAppealController extends BaseAdminController {
             throw new InformationExpiredException("Information Expired");
         }
         //后台处理申诉结果为放行---更改买卖双方钱包
-        memberWalletService.transferAdmin(order, ret);
+        memberLegalCurrencyWalletService.transferAdmin(order, ret);
 
         if (ret == 1) {
 

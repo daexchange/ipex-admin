@@ -8,7 +8,7 @@ import ai.turbochain.ipex.service.CoinService;
 import ai.turbochain.ipex.service.ExchangeCoinService;
 import ai.turbochain.ipex.service.MemberService;
 import ai.turbochain.ipex.util.MessageResult;
-
+import ai.turbochain.ipex.constant.MemberRegisterOriginEnum;
 import ai.turbochain.ipex.controller.common.BaseAdminController;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -76,7 +76,7 @@ public class ExchangeOrderMineDetailController extends BaseAdminController{
             }
             if (!StringUtils.isEmpty(phone)) {
                 //通过手机号获取用户id
-                Member member=memberService.findByPhone(phone);
+                Member member=memberService.findByPhoneAndOrigin(phone,MemberRegisterOriginEnum.IPEX.getSourceType());
                 query.append("{\"match\":{\"member_id\":\"" + member.getId() + "\"}}");
             }
             if (!StringUtils.isEmpty(exchangeCoin)) {
