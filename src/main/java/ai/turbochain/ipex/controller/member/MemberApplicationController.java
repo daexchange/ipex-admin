@@ -1,5 +1,8 @@
 package ai.turbochain.ipex.controller.member;
 
+import ai.turbochain.ipex.constant.MemberLevelEnum;
+import ai.turbochain.ipex.entity.Member;
+import ai.turbochain.ipex.service.MemberService;
 import com.querydsl.core.types.Predicate;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import ai.turbochain.ipex.annotation.AccessLog;
@@ -21,12 +24,15 @@ import org.springframework.data.domain.Page;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
+import javax.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import static ai.turbochain.ipex.constant.AuditStatus.AUDIT_ING;
 import static ai.turbochain.ipex.constant.AuditStatus.AUDIT_DEFEATED;
 import static ai.turbochain.ipex.constant.AuditStatus.AUDIT_SUCCESS;
+import static ai.turbochain.ipex.constant.RealNameStatus.VERIFIED;
 import static ai.turbochain.ipex.entity.QMemberApplication.memberApplication;
 import static org.springframework.util.Assert.notNull;
 
@@ -116,4 +122,21 @@ public class MemberApplicationController extends BaseAdminController {
         //返回
         return success();
     }
+
+    /******************************************************************************************************************/
+
+    @RequestMapping("checkMemberPass")
+    public MessageResult checkPass(HttpServletRequest request){
+        String memberId = request.getParameter("memberId");
+        Member member = memberApplicationService.getMemberById(Long.valueOf(memberId));
+        member.setMemberLevel(MemberLevelEnum.REALNAME);//实名会员
+        member.setRealName(request.getParameter("realName"));//添加会员真实姓名
+        member.setIdNumber(request.getParameter("idCard"));//会员身份证号码
+        member.setRealNameStatus(VERIFIED);//会员状态修改已认证
+        member.setApplicationTime(new Date());
+        memberApplicationService.updateMemberAuthen(member);
+
+        return success();
+    }
+
 }
