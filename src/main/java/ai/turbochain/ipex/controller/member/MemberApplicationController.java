@@ -78,15 +78,15 @@ public class MemberApplicationController extends BaseAdminController {
         if (screen.getAuditStatus() != null) {
             booleanExpressions.add(memberApplication.auditStatus.eq(screen.getAuditStatus()));
         } else {
-        	booleanExpressions.add(memberApplication.auditStatus.in(AUDIT_ING, AUDIT_DEFEATED, AUDIT_SUCCESS));
+            booleanExpressions.add(memberApplication.auditStatus.in(AUDIT_ING, AUDIT_DEFEATED, AUDIT_SUCCESS));
         }
         if (!StringUtils.isEmpty(screen.getAccount())) {
             booleanExpressions.add(memberApplication.member.username.like("%" + screen.getAccount() + "%")
                     //.or(memberApplication.member.mobilePhone.like(screen.getAccount() + "%"))
-                   // .or(memberApplication.member.email.like(screen.getAccount() + "%"))
+                    // .or(memberApplication.member.email.like(screen.getAccount() + "%"))
                     .or(memberApplication.member.realName.like("%" + screen.getAccount() + "%")));
         }
-        if(!StringUtils.isEmpty(screen.getCardNo())) {
+        if (!StringUtils.isEmpty(screen.getCardNo())) {
             booleanExpressions.add(memberApplication.member.idNumber.like("%" + screen.getCardNo() + "%"));
         }
         Predicate predicate = PredicateUtils.getPredicate(booleanExpressions);
@@ -126,9 +126,12 @@ public class MemberApplicationController extends BaseAdminController {
     /******************************************************************************************************************/
 
     @RequestMapping("checkMemberPass")
-    public MessageResult checkPass(HttpServletRequest request){
+    public MessageResult checkPass(HttpServletRequest request) {
         String memberId = request.getParameter("memberId");
         Member member = memberApplicationService.getMemberById(Long.valueOf(memberId));
+        if (member == null) {
+            return error("该会员不存在");
+        }
         member.setMemberLevel(MemberLevelEnum.REALNAME);//实名会员
         member.setRealName(request.getParameter("realName"));//添加会员真实姓名
         member.setIdNumber(request.getParameter("idCard"));//会员身份证号码
